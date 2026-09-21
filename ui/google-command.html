@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+
+<head lang="fr">
+    <meta charset="utf-8" />
+    <title>Commande Google</title>
+    <script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+    <style>
+        :root { color-scheme: dark; }
+        body { padding-bottom: 12px; }
+        .section { border: 1px solid #3e4148; border-radius: 6px; margin: 8px 0; padding: 10px; }
+        .section h2 { font-size: 13px; margin: 0 0 4px; }
+        .section p, .hint { color: #a4a7ad; font-size: 11px; line-height: 1.35; margin: 4px 0 9px; }
+        .step { border: 1px solid #464a52; border-radius: 5px; margin: 7px 0; padding: 8px; }
+        .step-header { align-items: center; display: flex; gap: 6px; margin-bottom: 6px; }
+        .step-number { background: #4b8bd8; border-radius: 50%; color: white; display: inline-flex; font-size: 11px; height: 20px; justify-content: center; line-height: 20px; width: 20px; }
+        .step-icon { font-size: 15px; width: 18px; }
+        .step-title { flex: 1; font-weight: 600; }
+        .remove { background: transparent; border: 0; color: #a4a7ad; cursor: pointer; font-size: 15px; }
+        textarea, input, select { box-sizing: border-box; width: 100%; }
+        textarea { min-height: 48px; resize: vertical; }
+        input[type=number] { width: 85px; }
+        .delay-line { align-items: center; display: flex; gap: 7px; }
+        .add-row { position: relative; }
+        .add-button, .menu button, .account-button, .account-remove { background: #35383e; border: 1px solid #555a63; border-radius: 4px; color: #f1f1f1; cursor: pointer; padding: 6px 9px; }
+        .add-button { width: 100%; }
+        .menu { background: #25272b; border: 1px solid #626873; border-radius: 5px; display: none; left: 0; padding: 5px; position: absolute; right: 0; top: 34px; z-index: 10; }
+        .menu button { display: block; margin: 3px 0; text-align: left; width: 100%; }
+        .switch-row { align-items: center; display: flex; gap: 7px; margin: 8px 0; }
+        .switch-row input { width: auto; }
+        .secondary-options { margin-top: 8px; }
+        .account-row { align-items: center; display: flex; gap: 6px; margin: 6px 0; }
+        .account-button { flex: 1; text-align: left; }
+        .account-button.active { border-color: #4b8bd8; }
+        .account-current { color: #63c98a; display: block; font-size: 10px; margin-top: 2px; }
+        .account-remove { color: #f19a9a; padding: 5px 7px; }
+        .status { color: #a4a7ad; font-size: 11px; line-height: 1.35; margin-top: 8px; }
+        .status.connected { color: #63c98a; }
+        .status.error { color: #f19a9a; }
+        details { margin-top: 8px; }
+        summary { cursor: pointer; font-size: 11px; }
+    </style>
+</head>
+
+<body>
+    <div class="section">
+        <h2>Simple clic</h2>
+        <p>Action principale exécutée lorsque tu appuies normalement sur le bouton.</p>
+        <div id="simple-steps"></div>
+    </div>
+
+    <div class="section">
+        <div class="switch-row">
+            <input id="secondary-enabled" type="checkbox">
+            <label for="secondary-enabled">Activer l’appui secondaire</label>
+        </div>
+        <div id="secondary-panel" hidden>
+            <sdpi-item label="Type d’appui secondaire">
+                <select id="secondary-type">
+                    <option value="long">Appui long</option>
+                    <option value="double">Double clic</option>
+                </select>
+            </sdpi-item>
+            <div id="secondary-steps"></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Compte Google</h2>
+        <p>Le compte actif est utilisé pour toutes les commandes de cette touche.</p>
+        <div id="accounts"></div>
+        <button class="add-button" id="add-account" type="button">＋ Ajouter un compte Google</button>
+        <div class="status" id="auth-status">Vérification de la connexion…</div>
+    </div>
+
+    <details>
+        <summary>Options avancées</summary>
+        <sdpi-item label="Titre de la touche">
+            <input id="label" type="text" placeholder="Google">
+        </sdpi-item>
+        <sdpi-item label="Langue">
+            <input id="language" type="text" value="fr-CA">
+        </sdpi-item>
+        <sdpi-item label="Modèle appareil">
+            <input id="deviceModelId" type="text" placeholder="Optionnel">
+        </sdpi-item>
+        <sdpi-item label="ID appareil">
+            <input id="deviceId" type="text" placeholder="Optionnel">
+        </sdpi-item>
+    </details>
+
+    <script>
+        const client = SDPIComponents.streamDeckClient;
+        const state = {
+            settings: {
+                simpleClickSteps: [{ type: 'command', text: '' }],
+                secondaryEnabled: false,
+                secondaryType: 'long',
+                secondarySteps: [{ type: 'command', text: '' }],
+                language: 'fr-CA'
+            }
+        };
+
+        function ensureSteps(value) {
+            if (!Array.isArray(value) || value.length === 0) return [{ type: 'command', text: '' }];
+            return value.map(step => step && step.type === 'delay'
+                ? { type: 'delay', seconds: Math.max(0, Number(step.seconds) || 0) }
+                : { type: 'command', text: typeof step?.text === 'string' ? step.text : '' });
+        }
+
+        function save() {
+            client.setSettings(state.settings);
+        }
+
+        function makeStep(sectionKey, step, index) {
+            const card = document.createElement('div');
+            card.className = 'step';
+
+            const header = document.createElement('div');
+            header.className = 'step-header';
+            header.innerHTML = `<span class="step-number">${index + 1}</span><span class="step-icon">${step.type === 'delay' ? '⏳' : '⌘'}</span><span class="step-title">${step.type === 'delay' ? 'Délai' : 'Commande'}</span>`;
+            const remove = document.createElement('button');
+            remove.className = 'remove';
+            remove.type = 'button';
+            remove.title = 'Supprimer cette étape';
+            remove.textContent = '×';
+            remove.addEventListener('click', () => {
+                const steps = state.settings[sectionKey];
+                steps.splice(index, 1);
+                if (!steps.length) steps.push({ type: 'command', text: '' });
+                save();
+                renderSteps(sectionKey);
+            });
+            header.appendChild(remove);
+            card.appendChild(header);
+
+            if (step.type === 'delay') {
+                const row = document.createElement('div');
+                row.className = 'delay-line';
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = '0';
+                input.step = '0.1';
+                input.value = String(step.seconds ?? 0);
+                input.addEventListener('input', () => {
+                    step.seconds = Math.max(0, Number(input.value) || 0);
+                    save();
+                });
+                row.append(input, document.createTextNode('secondes'));
+                card.appendChild(row);
+            } else {
+                const input = document.createElement('textarea');
+                input.placeholder = 'Écris librement la commande à exécuter';
+                input.value = step.text || '';
+                input.addEventListener('input', () => {
+                    step.text = input.value;
+                    save();
+                });
+                card.appendChild(input);
+            }
+            return card;
+        }
+
+        function renderSteps(sectionKey) {
+            const container = document.getElementById(sectionKey === 'simpleClickSteps' ? 'simple-steps' : 'secondary-steps');
+            const steps = state.settings[sectionKey];
+            container.replaceChildren(...steps.map((step, index) => makeStep(sectionKey, step, index)));
+
+            const addRow = document.createElement('div');
+            addRow.className = 'add-row';
+            const add = document.createElement('button');
+            add.className = 'add-button';
+            add.type = 'button';
+            add.textContent = '＋ Ajouter une étape';
+            const menu = document.createElement('div');
+            menu.className = 'menu';
+
+            const addCommand = document.createElement('button');
+            addCommand.type = 'button';
+            addCommand.textContent = '⌘  Ajouter une commande';
+            addCommand.addEventListener('click', () => {
+                steps.push({ type: 'command', text: '' });
+                save();
+                renderSteps(sectionKey);
+            });
+            const addDelay = document.createElement('button');
+            addDelay.type = 'button';
+            addDelay.textContent = '⏳  Ajouter un délai';
+            addDelay.addEventListener('click', () => {
+                steps.push({ type: 'delay', seconds: 1 });
+                save();
+                renderSteps(sectionKey);
+            });
+            menu.append(addCommand, addDelay);
+            add.addEventListener('click', () => {
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            });
+            addRow.append(add, menu);
+            container.appendChild(addRow);
+        }
+
+        function renderSecondary() {
+            const enabled = Boolean(state.settings.secondaryEnabled);
+            document.getElementById('secondary-enabled').checked = enabled;
+            document.getElementById('secondary-panel').hidden = !enabled;
+            document.getElementById('secondary-type').value = state.settings.secondaryType || 'long';
+            renderSteps('secondarySteps');
+        }
+
+        function renderSettings() {
+            state.settings.simpleClickSteps = ensureSteps(state.settings.simpleClickSteps);
+            state.settings.secondarySteps = ensureSteps(state.settings.secondarySteps);
+            renderSteps('simpleClickSteps');
+            renderSecondary();
+            document.getElementById('label').value = state.settings.label || '';
+            document.getElementById('language').value = state.settings.language || 'fr-CA';
+            document.getElementById('deviceModelId').value = state.settings.deviceModelId || '';
+            document.getElementById('deviceId').value = state.settings.deviceId || '';
+        }
+
+        function bindSettings() {
+            document.getElementById('secondary-enabled').addEventListener('change', (event) => {
+                state.settings.secondaryEnabled = event.target.checked;
+                save();
+                renderSecondary();
+            });
+            document.getElementById('secondary-type').addEventListener('change', (event) => {
+                state.settings.secondaryType = event.target.value;
+                save();
+            });
+            for (const id of ['label', 'language', 'deviceModelId', 'deviceId']) {
+                document.getElementById(id).addEventListener('input', (event) => {
+                    state.settings[id] = event.target.value;
+                    save();
+                });
+            }
+            document.getElementById('add-account').addEventListener('click', async () => {
+                const button = document.getElementById('add-account');
+                const status = document.getElementById('auth-status');
+                button.disabled = true;
+                status.textContent = 'Ouverture de la connexion Google…';
+                status.className = 'status';
+                try {
+                    await client.send('sendToPlugin', { event: 'start-auth' });
+                } catch (error) {
+                    status.textContent = `Impossible de contacter le plugin : ${error instanceof Error ? error.message : String(error)}`;
+                    status.className = 'status error';
+                } finally {
+                    button.disabled = false;
+                }
+            });
+        }
+
+        function renderAccounts(payload) {
+            const container = document.getElementById('accounts');
+            container.replaceChildren();
+            for (const account of payload.accounts || []) {
+                const row = document.createElement('div');
+                row.className = 'account-row';
+                const select = document.createElement('button');
+                select.type = 'button';
+                select.className = `account-button ${account.id === payload.currentAccountId ? 'active' : ''}`;
+                select.textContent = account.email;
+                if (account.id === payload.currentAccountId) {
+                    const current = document.createElement('span');
+                    current.className = 'account-current';
+                    current.textContent = 'Compte utilisé actuellement';
+                    select.appendChild(current);
+                }
+                select.addEventListener('click', () => client.send('sendToPlugin', { event: 'select-account', accountId: account.id }));
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'account-remove';
+                remove.title = 'Supprimer ce compte';
+                remove.textContent = 'Déconnecter';
+                remove.addEventListener('click', () => client.send('sendToPlugin', { event: 'disconnect-account', accountId: account.id }));
+                row.append(select, remove);
+                container.appendChild(row);
+            }
+        }
+
+        function renderAuthStatus(payload) {
+            renderAccounts(payload);
+            const status = document.getElementById('auth-status');
+            status.textContent = payload.message || '';
+            status.className = `status ${payload.connected ? 'connected' : 'error'}`;
+        }
+
+        client.sendToPropertyInspector.subscribe((event) => {
+            if (event.payload && event.payload.type === 'auth-status') renderAuthStatus(event.payload);
+        });
+
+        (async () => {
+            const actionSettings = await client.getSettings();
+            state.settings = { ...state.settings, ...(actionSettings.settings || {}) };
+            renderSettings();
+            bindSettings();
+            client.send('sendToPlugin', { event: 'get-auth-status' });
+        })();
+    </script>
+</body>
+
+</html>

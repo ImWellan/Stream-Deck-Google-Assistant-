@@ -1,0 +1,43 @@
+{
+	"Name": "Google Text Commands",
+	"Version": "0.2.0.0",
+	"Author": "Codex Demo",
+	"Actions": [
+		{
+			"Name": "Google Text Command",
+			"UUID": "com.codex-demo.google-text-commands.command",
+			"Icon": "imgs/actions/counter/icon",
+			"Tooltip": "Sends a text command or a delayed sequence to Google Assistant.",
+			"PropertyInspectorPath": "ui/google-command.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/counter/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		}
+	],
+	"Category": "Google Text Commands",
+	"CategoryIcon": "imgs/plugin/category-icon",
+	"CodePath": "bin/plugin.js",
+	"Description": "Send text commands to Google Assistant from Stream Deck",
+	"Icon": "imgs/plugin/marketplace",
+	"SDKVersion": 3,
+	"Software": {
+		"MinimumVersion": "7.1"
+	},
+	"OS": [
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		}
+	],
+	"Nodejs": {
+		"Version": "24",
+		"Debug": "enabled"
+	},
+	"UUID": "com.codex-demo.google-text-commands"
+}
