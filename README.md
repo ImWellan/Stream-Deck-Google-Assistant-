@@ -1,5 +1,4 @@
-[README.md](https://github.com/user-attachments/files/32487754/README.md)
-# Google Text Commands for Stream Deck
+# Google Assistant Commands for Stream Deck
 
 Windows Stream Deck plugin that sends written commands and delayed sequences to Google Assistant.
 
@@ -22,3 +21,9 @@ Executions are serialized so that two conversations are not sent to Google Assis
 Development commands are documented in `NOTES.md`.
 
 The Google Assistant SDK is intended for experimental and non-commercial projects. Before public distribution, verify the Google integration path and OAuth requirements.
+
+## Update
+
+- The Stream Deck key no longer displays `Google` automatically when no custom title is configured.
+- A custom title entered in the advanced options is still displayed on the key.
+- Google account connections, commands, sequences, delays, and secondary-press behavior are unchanged.
