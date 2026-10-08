@@ -22,7 +22,7 @@ Development commands are documented in `NOTES.md`.
 
 The Google Assistant SDK is intended for experimental and non-commercial projects. Before public distribution, verify the Google integration path and OAuth requirements.
 
-## Update
+## Update 2.0.0
 
 - The Stream Deck key no longer displays `Google` automatically when no custom title is configured.
 - A custom title entered in the advanced options is still displayed on the key.
