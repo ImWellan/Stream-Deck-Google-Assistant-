@@ -40,7 +40,7 @@ export class GoogleCommandAction extends SingletonAction<GoogleCommandSettings> 
 	}
 
 	override onWillAppear(ev: WillAppearEvent<GoogleCommandSettings>): void | Promise<void> {
-		return ev.action.setTitle(ev.payload.settings.label?.trim() || "Google");
+		return ev.action.setTitle(ev.payload.settings.label?.trim() || "");
 	}
 
 	override onKeyDown(ev: KeyDownEvent<GoogleCommandSettings>): void | Promise<void> {
@@ -115,7 +115,7 @@ export class GoogleCommandAction extends SingletonAction<GoogleCommandSettings> 
 			await actionInstance.showAlert();
 			console.error("Google command failed", error);
 		} finally {
-			await actionInstance.setTitle(settings.label?.trim() || "Google");
+			await actionInstance.setTitle(settings.label?.trim() || "");
 		}
 	}
 
